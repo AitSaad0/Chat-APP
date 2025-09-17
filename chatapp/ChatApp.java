@@ -5,13 +5,39 @@ import java.util.*;
 import java.io.*;
 
 public class ChatApp {
-    public static void main(String args[]) {
+    static int i = 0;
+
+    public static void main(String[] args) {
         if (args.length == 0) {
-            Client client = new Client();
-            (new Thread(client)).start();
+            int numClients = 5; // create 5 clients
+            List<Thread> threads = new ArrayList<>();
+            for (int j = 0; j < numClients; j++) {
+                System.out.println("Creating client with i = " + i);
+                Client client = new Client(i++);
+                Thread t = new Thread(client);
+                threads.add(t);
+                t.start();
+            }
+
+            // Wait for all clients to finish
+            for (Thread t : threads) {
+                try {
+                    t.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("All clients finished.");
         } else {
             Server server = new Server();
-            (new Thread(server)).start();
+            Thread serverThread = new Thread(server);
+            serverThread.start();
+            try {
+                serverThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
