@@ -1,11 +1,11 @@
 package chatapp;
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class Server implements Runnable {
+    List<Socket> clients = new ArrayList<>();
 
     public Server() {
     }
@@ -15,9 +15,18 @@ public class Server implements Runnable {
         try (ServerSocket server = new ServerSocket(902)) {
             while (true) {
                 // List<Socket> clients = new ArrayList<>();
-                System.out.print("I am waiting right now");
-                Socket connection = server.accept();
+                System.out.println("I am waiting right now");
+                try (Socket connection = server.accept();
+                        BufferedReader buff = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                            String message = ""; 
+                            message = buff.readLine(); 
+                            System.out.println(message);
+                } catch (IOException e) {
+                    System.out.println("I couldn t create an input stream to read from the connection");
+                }
+
                 // clients.add(connection);
+
                 // Thread client = new Thread(new ClientThread(connection, clients));
                 // client.start();
             }
@@ -27,4 +36,9 @@ public class Server implements Runnable {
         }
 
     }
+
+    public List<Socket> getClients() {
+        return clients;
+    }
+
 }
