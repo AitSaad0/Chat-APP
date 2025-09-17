@@ -13,15 +13,7 @@ public class Client implements Runnable {
       System.out.println("i am a client ");
 
       new Thread(() -> {
-        try (BufferedReader messageReader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
-          String messageFromServer;
-          while ((messageFromServer = messageReader.readLine()) != null) {
-            System.out.println(messageFromServer);
-          }
-        } catch (IOException e) {
-          System.out.println("Disconnected from server");
-          System.exit(0);
-        }
+        receivingMessage(client);
       }).start();
 
       System.out.println("u can send message to all users ");
@@ -45,5 +37,17 @@ public class Client implements Runnable {
       System.out.println(e);
     }
 
+  }
+
+  private void receivingMessage(Socket client) {
+    try (BufferedReader messageReader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+      String messageFromServer;
+      while ((messageFromServer = messageReader.readLine()) != null) {
+        System.out.println(messageFromServer);
+      }
+    } catch (IOException e) {
+      System.out.println("Disconnected from server");
+      System.exit(0);
+    }
   }
 }

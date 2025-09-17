@@ -3,12 +3,13 @@ package chatapp;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 public class Server implements Runnable {
     private List<Socket> clients = Collections.synchronizedList(new ArrayList<>());
     private Map<Integer, BufferedWriter> broadcastBuffers = Collections.synchronizedMap(new HashMap<>());
     private Map<Integer, BufferedReader> ReadBuffers = Collections.synchronizedMap(new HashMap<>());
-    private static int i = 0;
 
     public Server() {
     }
@@ -17,19 +18,19 @@ public class Server implements Runnable {
 
         try (ServerSocket server = new ServerSocket(902)) {
             System.out.println("Server running...");
-
             while (true) {
                 Socket connection = server.accept();
-                System.out.println("client " + i + " is connected");
+                connecting(connection);
                 clients.add(connection);
                 broadcastBuffers.put(connection.getPort(),
                         new BufferedWriter(new OutputStreamWriter(connection.getOutputStream())));
                 ReadBuffers.put(connection.getPort(),
                         new BufferedReader(new InputStreamReader(connection.getInputStream())));
                 new Thread(() -> {
-                    handleClient(connection, i++);
+                    handleClient(connection);
                 }).start();
             }
+
         } catch (IOException e) {
             System.out.println("problem in ServerSide");
 
@@ -37,26 +38,39 @@ public class Server implements Runnable {
 
     }
 
-    public void handleClient(Socket client, int clientNum) {
+    public void handleClient(Socket client) {
         try {
             String message;
             while ((message = ReadBuffers.get(client.getPort()).readLine()) != null) {
-                System.out.println("client " + clientNum + " : " + message);
-               broadcastMessage(message, client, clientNum);
+                System.out.println("client " + client.getPort() + " : " + message);
+                broadcastMessage(message, client);
             }
+
         } catch (IOException e) {
-            System.out.println("I couldn t create an input stream to read from the connection");
+            System.out.println("Client " + client + " disconnected: " + e.getMessage());
+        } finally {
+            try {
+                client.close();
+            } catch (IOException e) {
+                System.out.println("Failed to close socket: " + e.getMessage());
+            }
+            clients.remove(client);
+            broadcastBuffers.remove(client.getPort());
+            ReadBuffers.remove(client.getPort());
         }
+
     }
 
-    public void broadcastMessage(String message, Socket client, int clientNum) {
+    public void broadcastMessage(String message, Socket client) {
         try {
-            Set<Integer> ports = broadcastBuffers.keySet();
-            for (Integer port : ports) {
-                if (client.getPort() != port) {
-                    broadcastBuffers.get(port).write("client " + clientNum + " : " + message);
-                    broadcastBuffers.get(port).newLine();
-                    broadcastBuffers.get(port).flush();
+            synchronized (broadcastBuffers) {
+
+                for (Integer port : broadcastBuffers.keySet()) {
+                    if (client.getPort() != port) {
+                        broadcastBuffers.get(port).write("client " + client.getPort() + " : " + message);
+                        broadcastBuffers.get(port).newLine();
+                        broadcastBuffers.get(port).flush();
+                    }
                 }
             }
 
@@ -65,8 +79,18 @@ public class Server implements Runnable {
         }
     }
 
-    public List<Socket> getClients() {
-        return clients;
+    private void connecting(Socket address) {
+        File file = new File("log.txt");
+        LocalDate date = LocalDate.now();
+        LocalTime time = LocalTime.now();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) { // append mode
+            writer.write(address.getInetAddress().getHostAddress() + " connected at : " + date + " " + time);
+            writer.newLine();
+            writer.flush();
+        } catch (IOException e) {
+            System.out.println("Failed to broadcast to client: " + e.getMessage());
+        }
+
     }
 
 }
